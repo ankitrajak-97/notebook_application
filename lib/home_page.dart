@@ -1,3 +1,4 @@
+import 'package:database_notebook/bottomSheetWidget.dart';
 import 'package:database_notebook/data/local/db_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -31,11 +32,27 @@ class _HomePageState extends State<HomePage> {
     setState(() {});
   }
 
+  void handleSave(String title, String desc, bool isUpdate, int sno) async {
+    if (title.isEmpty || desc.isEmpty) {
+      setState(() {
+        errMsg = "Please fill all the required fields.";
+      });
+    } else {
+      bool check = isUpdate
+          ? await dbRef!.updateNote(title: title, desc: desc, sno: sno)
+          : await dbRef!.addNote(title: title, desc: desc);
+      if (check) {
+        getNotes();
+      }
+      Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Notes"),
+        title: const Text("Notes"),
       ),
       // all notes is visible here
       body: allNotes.isNotEmpty
@@ -58,7 +75,7 @@ class _HomePageState extends State<HomePage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
-                        icon: FaIcon(
+                        icon: const FaIcon(
                           FontAwesomeIcons.pen,
                           size: 16,
                         ),
@@ -66,10 +83,10 @@ class _HomePageState extends State<HomePage> {
                           // Handle edit action
                           showModalBottomSheet(
                             context: context,
-                            backgroundColor: Color(0xFFB2DFDB),
+                            backgroundColor: const Color(0xFFB2DFDB),
                             isScrollControlled: true,
                             // Allows full-screen height control
-                            shape: RoundedRectangleBorder(
+                            shape: const RoundedRectangleBorder(
                               borderRadius: BorderRadius.vertical(
                                 top: Radius.circular(30.0),
                               ),
@@ -79,19 +96,20 @@ class _HomePageState extends State<HomePage> {
                                   allNotes[index][DBHelper.COLUMN_TITLE];
                               descController.text =
                                   allNotes[index][DBHelper.COLUMN_DESC];
-                              return bottomSheetView(
-                                  isUpdate: true,
-                                  sno: allNotes[index][DBHelper.COLUMN_SNO]
-                                  // dbRef: dbRef!, onNoteAdded: getNotes,
-                                  // isUpdate: true, // Edit mode
-                                  // existingNote: note,
-                                  );
+                              return BottomSheetView(
+                                isUpdate: true,
+                                sno: allNotes[index][DBHelper.COLUMN_SNO],
+                                titleController: titleController,
+                                descController: descController,
+                                errMsg: errMsg,
+                                onSave: handleSave,
+                              );
                             },
                           );
                         },
                       ),
                       IconButton(
-                        icon: FaIcon(
+                        icon: const FaIcon(
                           FontAwesomeIcons.trash,
                           size: 16,
                         ),
@@ -108,7 +126,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 );
               })
-          : Center(
+          : const Center(
               child: Text("No any notes yet !!!! "),
             ),
       floatingActionButton: FloatingActionButton(
@@ -122,132 +140,27 @@ class _HomePageState extends State<HomePage> {
 
           showModalBottomSheet(
             context: context,
-            backgroundColor: Color(0xFFB2DFDB),
+            backgroundColor: const Color(0xFFB2DFDB),
             isScrollControlled: true,
             // Allows full-screen height control
-            shape: RoundedRectangleBorder(
+            shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.vertical(
                 top: Radius.circular(30.0),
               ),
             ),
             builder: (context) {
-              return bottomSheetView(
-                  // dbRef: dbRef!,
-                  // isUpdate: false,
-                  // onNoteAdded: getNotes,
-                  );
+              return BottomSheetView(
+                isUpdate: false,
+                sno: 0,
+                titleController: titleController,
+                descController: descController,
+                errMsg: errMsg,
+                onSave: handleSave,
+              );
             },
           );
         },
         child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  Widget bottomSheetView({bool isUpdate = false, int sno = 0}) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16.0,
-        right: 16.0,
-        top: 16.0,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16.0,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 50,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey[400],
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              isUpdate ? 'Edit Note' : 'Add Note',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: titleController,
-              decoration: InputDecoration(
-                labelText: 'Title *',
-                hintText: 'Enter title here',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(11),
-                ),
-              ),
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: descController,
-              maxLines: 4,
-              decoration: InputDecoration(
-                labelText: 'Description *',
-                hintText: 'Enter description here',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(11),
-                ),
-              ),
-            ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                ElevatedButton(
-                  onPressed: () async {
-                    var title = titleController.text.trim();
-                    var desc = descController.text.trim();
-
-                    if (title.isEmpty || desc.isEmpty) {
-                      setState(() {
-                        errMsg = "Please fill all the required fields.";
-                      });
-                    } else {
-                      bool check = isUpdate
-                          ? await dbRef!
-                              .updateNote(title: title, desc: desc, sno: sno)
-                          : await dbRef!.addNote(
-                              title: title,
-                              desc: desc,
-                            );
-                      if (check) {
-                        getNotes();
-                      }
-                      Navigator.pop(context);
-                    }
-                  },
-                  child: Text(isUpdate ? 'Edit' : 'Save'),
-                ),
-                Spacer(),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text('Cancel'),
-                ),
-              ],
-            ),
-            if (errMsg.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  errMsg,
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }
